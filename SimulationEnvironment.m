@@ -15,7 +15,7 @@ classdef SimulationEnvironment
     end
 
     methods
-        %% Konstruktor
+        % Konstruktor
         function obj = SimulationEnvironment(model, controller, Ts, T_end, x0, disturbance)
             obj.model = model;
             obj.controller = controller;
@@ -32,4 +32,5 @@ classdef SimulationEnvironment
             obj.results = struct('T', [], 'X', [], 'U', []);
         end
     end
+
 end
