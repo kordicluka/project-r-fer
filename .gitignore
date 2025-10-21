@@ -13,3 +13,5 @@
 *.nav
 *.snm
 *.vrb
+# Matlab pomoćne datoteke
+*.asv
