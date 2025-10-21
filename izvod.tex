@@ -9,7 +9,7 @@
 \geometry{a4paper, margin=1in}
 
 \title{Matematički Izvod Dinamike Sustava Kolica s Njihalom}
-\author{Euler-Lagrangeova Metoda}
+\author{Euler-Lagrangeova Metoda (Modificirana Konvencija Kuta)}
 \date{\today}
 
 \begin{document}
@@ -25,7 +25,7 @@ Ovaj dokument detaljno opisuje izvod nelinearnih jednadžbi dinamike za sustav k
     \begin{tikzpicture}[scale=1.2, every node/.style={scale=1.2}]
         % Definicija varijabli za lakše pozicioniranje
         \def\cartX{1.5} % x-pozicija kolica
-        \def\pendulumAngle{45} % Kut njihala od vertikale (prema dolje)
+        \def\pendulumAngle{-45} % Kut njihala od vertikale (negativno = CCW)
         \def\pendulumLength{3} % Duljina njihala
 
         % Podloga
@@ -48,10 +48,11 @@ Ovaj dokument detaljno opisuje izvod nelinearnih jednadžbi dinamike za sustav k
         % Pivot točka
         \coordinate (pivot) at (\cartX, 0.55);
         % Pozicija mase njihala (koristi se 'calc' biblioteka)
+        % (90 - (-45)) = 135 stupnjeva
         \coordinate (mass) at ($(pivot) + (90-\pendulumAngle:\pendulumLength)$);
         
         % Šipka njihala
-        \draw[thick] (pivot) -- (mass) node[midway, above right] {\(L\)};
+        \draw[thick] (pivot) -- (mass) node[midway, above left] {\(L\)};
         % Zglob (pivot point) nacrtan kao puni krug
         \fill[black] (pivot) circle (2.5pt);
 
@@ -63,13 +64,14 @@ Ovaj dokument detaljno opisuje izvod nelinearnih jednadžbi dinamike za sustav k
         \draw[dashed, gray] (pivot) -- ++(0, \pendulumLength*1.1);
 
         % Oznaka za kut theta (koristi se 'calc' biblioteka)
-        \draw[->, >=Latex] ($(pivot) + (90:0.8)$) arc (90:90-\pendulumAngle:0.8) node[midway, right] {$\theta$};
+        % Arc od 90 do 135 stupnjeva
+        \draw[->, >=Latex] ($(pivot) + (90:0.8)$) arc (90:90-\pendulumAngle:0.8) node[midway, left] {$\theta$};
 
         % Sila F
         \draw[->, ultra thick, red] (\cartX+0.7, 0.3) -- ++(1,0) node[right] {$F$};
 
     \end{tikzpicture}
-    \caption{Shematski prikaz sustava kolica s njihalom, generiran pomoću TikZ.}
+    \caption{Shematski prikaz sustava kolica s njihalom, s kutom \(\theta\) mjerenim suprotno od kazaljke na satu (CCW) od gornje vertikale.}
     \label{fig:shema}
 \end{figure}
 
@@ -77,19 +79,20 @@ Ovaj dokument detaljno opisuje izvod nelinearnih jednadžbi dinamike za sustav k
 Generalizirane koordinate koje opisuju položaj sustava su:
 \begin{itemize}
     \item \(x\): horizontalni položaj kolica.
-    \item \(\theta\): kut njihala u odnosu na vertikalu (mjereno od donjeg stabilnog položaja, \(\theta = \pi\) je gornji nestabilni položaj).
+    \item \(\theta\): kut njihala u odnosu na vertikalu (mjereno **suprotno od kazaljke na satu** od gornjeg nestabilnog položaja, \(\theta = 0\)).
 \end{itemize}
 
+Uz pretpostavku da je zglob u ($x$, 0) i da $y$ os pokazuje prema gore:
 Položaj centra mase njihala (\(x_p, y_p\)) može se izraziti kao:
 \begin{align}
-    x_p &= x + L \sin(\theta) \\
-    y_p &= L \cos(\theta)
+    x_p &= x - L \sin(\theta) \\
+    y_p &= -L \cos(\theta)
 \end{align}
 
 Brzine centra mase njihala dobivamo deriviranjem po vremenu:
 \begin{align}
-    \dot{x}_p &= \dot{x} + L \cos(\theta) \dot{\theta} \\
-    \dot{y}_p &= -L \sin(\theta) \dot{\theta}
+    \dot{x}_p &= \dot{x} - L \cos(\theta) \dot{\theta} \\
+    \dot{y}_p &= L \sin(\theta) \dot{\theta}
 \end{align}
 
 \section{Energije Sustava}
@@ -102,31 +105,34 @@ Kinetička energija kolica:
     T_c = \frac{1}{2} M \dot{x}^2
 \end{equation}
 
-Kinetička energija njihala (pretpostavljamo da je masa koncentrirana na kraju štapa):
+Kinetička energija njihala:
 \begin{equation}
     T_p = \frac{1}{2} m (\dot{x}_p^2 + \dot{y}_p^2)
 \end{equation}
 \begin{align*}
-    T_p &= \frac{1}{2} m ((\dot{x} + L \cos(\theta) \dot{\theta})^2 + (-L \sin(\theta) \dot{\theta})^2) \\
-    &= \frac{1}{2} m (\dot{x}^2 + 2 \dot{x} L \cos(\theta) \dot{\theta} + L^2 \cos^2(\theta) \dot{\theta}^2 + L^2 \sin^2(\theta) \dot{\theta}^2) \\
-    &= \frac{1}{2} m (\dot{x}^2 + 2 \dot{x} L \cos(\theta) \dot{\theta} + L^2 \dot{\theta}^2)
+    T_p &= \frac{1}{2} m ((\dot{x} - L \cos(\theta) \dot{\theta})^2 + (L \sin(\theta) \dot{\theta})^2) \\
+    &= \frac{1}{2} m (\dot{x}^2 - 2 \dot{x} L \cos(\theta) \dot{\theta} + L^2 \cos^2(\theta) \dot{\theta}^2 + L^2 \sin^2(\theta) \dot{\theta}^2) \\
+    &= \frac{1}{2} m (\dot{x}^2 - 2 \dot{x} L \cos(\theta) \dot{\theta} + L^2 \dot{\theta}^2)
 \end{align*}
 
 Ukupna kinetička energija sustava je \(T = T_c + T_p\):
 \begin{equation}
-    T = \frac{1}{2} (M+m)\dot{x}^2 + m L \cos(\theta) \dot{x} \dot{\theta} + \frac{1}{2} m L^2 \dot{\theta}^2
+    T = \frac{1}{2} (M+m)\dot{x}^2 - m L \cos(\theta) \dot{x} \dot{\theta} + \frac{1}{2} m L^2 \dot{\theta}^2
 \end{equation}
 
 \subsection{Potencijalna Energija (V)}
-Potencijalna energija ovisi samo o visini njihala. Postavljamo referentnu nultu razinu na visinu zgloba (\(y=0\)).
+Postavljamo referentnu nultu razinu na visinu zgloba (\(y=0\)), pri čemu je $y$ os usmjerena prema gore. Potencijalna energija ovisi o visini $y_p$.
 \begin{equation}
-    V = m g y_p = m g L \cos(\theta)
+    V = m g y_p = -m g L \cos(\theta)
 \end{equation}
 
 \section{Lagrangeova Funkcija}
 Lagrangeova funkcija \(L\) definirana je kao \(L = T - V\).
 \begin{equation}
-    \mathcal{L} = \frac{1}{2} (M+m)\dot{x}^2 + m L \cos(\theta) \dot{x} \dot{\theta} + \frac{1}{2} m L^2 \dot{\theta}^2 - m g L \cos(\theta)
+    \mathcal{L} = \left( \frac{1}{2} (M+m)\dot{x}^2 - m L \cos(\theta) \dot{x} \dot{\theta} + \frac{1}{2} m L^2 \dot{\theta}^2 \right) - \left( -m g L \cos(\theta) \right)
+\end{equation}
+\begin{equation}
+    \mathcal{L} = \frac{1}{2} (M+m)\dot{x}^2 - m L \cos(\theta) \dot{x} \dot{\theta} + \frac{1}{2} m L^2 \dot{\theta}^2 + m g L \cos(\theta)
 \end{equation}
 
 \section{Euler-Lagrangeove Jednadžbe}
@@ -142,15 +148,15 @@ Za koordinatu \(x\), generalizirana sila je vanjska sila \(F\) koja djeluje na k
 Prvo računamo parcijalne derivacije:
 \begin{align*}
     \frac{\partial \mathcal{L}}{\partial x} &= 0 \\
-    \frac{\partial \mathcal{L}}{\partial \dot{x}} &= (M+m)\dot{x} + m L \cos(\theta) \dot{\theta}
+    \frac{\partial \mathcal{L}}{\partial \dot{x}} &= (M+m)\dot{x} - m L \cos(\theta) \dot{\theta}
 \end{align*}
 Sada deriviramo po vremenu:
 \begin{equation*}
-    \frac{d}{dt}\left(\frac{\partial \mathcal{L}}{\partial \dot{x}}\right) = (M+m)\ddot{x} + m L \cos(\theta) \ddot{\theta} - m L \sin(\theta) \dot{\theta}^2
+    \frac{d}{dt}\left(\frac{\partial \mathcal{L}}{\partial \dot{x}}\right) = (M+m)\ddot{x} - m L \cos(\theta) \ddot{\theta} + m L \sin(\theta) \dot{\theta}^2
 \end{equation*}
 Uvrštavanjem u Euler-Lagrangeovu jednadžbu dobivamo prvu jednadžbu gibanja:
 \begin{equation}
-    (M+m)\ddot{x} + m L \cos(\theta) \ddot{\theta} - m L \sin(\theta) \dot{\theta}^2 = F
+    (M+m)\ddot{x} - m L \cos(\theta) \ddot{\theta} + m L \sin(\theta) \dot{\theta}^2 = F
 \end{equation}
 
 \subsection{Jednadžba za koordinatu \(\theta\)}
@@ -158,30 +164,85 @@ Za koordinatu \(\theta\), nema vanjskog momenta koji djeluje na njihalo, pa je \
 
 Računamo parcijalne derivacije:
 \begin{align*}
-    \frac{\partial \mathcal{L}}{\partial \theta} &= -m L \sin(\theta) \dot{x} \dot{\theta} + m g L \sin(\theta) \\
-    \frac{\partial \mathcal{L}}{\partial \dot{\theta}} &= m L \cos(\theta) \dot{x} + m L^2 \dot{\theta}
+    \frac{\partial \mathcal{L}}{\partial \theta} &= m L \sin(\theta) \dot{x} \dot{\theta} - m g L \sin(\theta) \\
+    \frac{\partial \mathcal{L}}{\partial \dot{\theta}} &= -m L \cos(\theta) \dot{x} + m L^2 \dot{\theta}
 \end{align*}
 Deriviramo po vremenu:
 \begin{equation*}
-    \frac{d}{dt}\left(\frac{\partial \mathcal{L}}{\partial \dot{\theta}}\right) = m L \cos(\theta) \ddot{x} - m L \sin(\theta) \dot{\theta} \dot{x} + m L^2 \ddot{\theta}
+    \frac{d}{dt}\left(\frac{\partial \mathcal{L}}{\partial \dot{\theta}}\right) = -m L \cos(\theta) \ddot{x} + m L \sin(\theta) \dot{\theta} \dot{x} + m L^2 \ddot{\theta}
 \end{equation*}
 Sada uvrštavamo u Euler-Lagrangeovu jednadžbu:
 \begin{align*}
-    (m L \cos(\theta) \ddot{x} - m L \sin(\theta) \dot{\theta} \dot{x} + m L^2 \ddot{\theta}) - (-m L \sin(\theta) \dot{x} \dot{\theta} + m g L \sin(\theta)) = 0 \\
-    m L \cos(\theta) \ddot{x} + m L^2 \ddot{\theta} - m g L \sin(\theta) = 0
+    (-m L \cos(\theta) \ddot{x} + m L \sin(\theta) \dot{\theta} \dot{x} + m L^2 \ddot{\theta}) - (m L \sin(\theta) \dot{x} \dot{\theta} - m g L \sin(\theta)) = 0 \\
+    -m L \cos(\theta) \ddot{x} + m L^2 \ddot{\theta} + m g L \sin(\theta) = 0
 \end{align*}
 Dijeljenjem s \(mL\) dobivamo drugu jednadžbu gibanja:
 \begin{equation}
-    L \cos(\theta) \ddot{x} + L^2 \ddot{\theta} - g L \sin(\theta) = 0 \implies \ddot{x} \cos(\theta) + L \ddot{\theta} - g \sin(\theta) = 0
+    -\ddot{x} \cos(\theta) + L \ddot{\theta} + g \sin(\theta) = 0
 \end{equation}
 
 \section{Zaključak: Nelinearne Jednadžbe Gibanja}
-Sustav nelinearnih diferencijalnih jednadžbi koje opisuju dinamiku sustava kolica s njihalom su:
+Sustav nelinearnih diferencijalnih jednadžbi koje opisuju dinamiku sustava kolica s njihalom (s \(\theta\) mjereno CCW od vrha) su:
 \begin{align}
-    (M+m)\ddot{x} + m L \cos(\theta) \ddot{\theta} - m L \sin(\theta) \dot{\theta}^2 &= F \\
-    \ddot{x} \cos(\theta) + L \ddot{\theta} - g \sin(\theta) &= 0
+    (M+m)\ddot{x} - m L \cos(\theta) \ddot{\theta} + m L \sin(\theta) \dot{\theta}^2 &= F \\
+    -\ddot{x} \cos(\theta) + L \ddot{\theta} + g \sin(\theta) &= 0
 \end{align}
-Ove dvije jednadžbe čine nelinearni model sustava. Za potrebe simulacije i upravljanja, potrebno ih je riješiti po \(\ddot{x}\) i \(\ddot{\theta}\).
+Ove dvije jednadžbe čine nelinearni model sustava.
+
+\section{Prikaz u Prostoru Stanja}
+Da bismo sustav prikazali u prostoru stanja, kao što je ilustrirano na slici (1), potrebno je izvesti eksplicitne izraze za akceleracije $\ddot{x}$ i $\ddot{\theta}$. Koristimo notaciju sa slike, gdje je $p_x = x$, $v_x = \dot{x}$, $\omega = \dot{\theta}$ i $u = F$.
+
+Naš polazni sustav nelinearnih jednadžbi (19) i (20) je:
+\begin{align}
+    (M+m)\ddot{x} - m L \cos(\theta) \ddot{\theta} &= F - m L \sin(\theta) \dot{\theta}^2 \label{eq:sysA} \\
+    -\ddot{x} \cos(\theta) + L \ddot{\theta} &= -g \sin(\theta) \label{eq:sysB}
+\end{align}
+
+Riješimo sustav. Iz jednadžbe (\ref{eq:sysB}) izražavamo $L \ddot{\theta}$:
+\begin{equation}
+    L \ddot{\theta} = \ddot{x} \cos(\theta) - g \sin(\theta)
+\end{equation}
+Uvrštavanjem $L\ddot{\theta}$ u jednadžbu (\ref{eq:sysA}):
+\begin{align*}
+    (M+m)\ddot{x} - m \cos(\theta) (\ddot{x} \cos(\theta) - g \sin(\theta)) &= F - m L \sin(\theta) \dot{\theta}^2 \\
+    (M+m)\ddot{x} - m\cos^2\theta \ddot{x} + mg \sin\theta \cos\theta &= F - m L \sin\theta \dot{\theta}^2 \\
+    \ddot{x} (M + m - m\cos^2\theta) &= F - m L \sin\theta \dot{\theta}^2 - mg \sin\theta \cos\theta \\
+    \ddot{x} (M + m(1 - \cos^2\theta)) &= F - m L \sin\theta \dot{\theta}^2 - mg \sin\theta \cos\theta \\
+    \ddot{x} (M + m\sin^2\theta) &= F - m L \sin\theta \dot{\theta}^2 - mg \sin\theta \cos\theta
+\end{align*}
+Konačno, rješenje za $\ddot{x}$ (tj. $\dot{v}_x$) je:
+\begin{equation}
+    \dot{v}_x = \ddot{x} = \frac{F - mL \sin\theta \omega^2 - mg \sin\theta \cos\theta}{M + m\sin^2\theta}
+\end{equation}
+Sada možemo pronaći $\ddot{\theta}$ (tj. $\dot{\omega}$) uvrštavanjem $\ddot{x}$ natrag u izraz za $L \ddot{\theta}$:
+\begin{align*}
+    L \ddot{\theta} &= \ddot{x} \cos(\theta) - g \sin(\theta) \\
+    L \ddot{\theta} &= \cos(\theta) \left( \frac{F - mL \sin\theta \omega^2 - mg \sin\theta \cos\theta}{M + m\sin^2\theta} \right) - g \sin(\theta) \\
+    L \ddot{\theta} &= \frac{\cos\theta (F - mL \sin\theta \omega^2 - mg \sin\theta \cos\theta) - g \sin\theta (M + m\sin^2\theta)}{M + m\sin^2\theta} \\
+    L \ddot{\theta} &= \frac{F \cos\theta - mL \sin\theta \cos\theta \omega^2 - mg \sin\theta \cos^2\theta - Mg \sin\theta - mg \sin^3\theta}{M + m\sin^2\theta} \\
+    L \ddot{\theta} &= \frac{F \cos\theta - mL \sin\theta \cos\theta \omega^2 - mg \sin\theta (\cos^2\theta + \sin^2\theta) - Mg \sin\theta}{M + m\sin^2\theta} \\
+    L \ddot{\theta} &= \frac{F \cos\theta - mL \sin\theta \cos\theta \omega^2 - (M+m)g \sin\theta}{M + m\sin^2\theta}
+\end{align*}
+Konačno, rješenje za $\ddot{\theta}$ (tj. $\dot{\omega}$) je:
+\begin{equation}
+    \dot{\omega} = \ddot{\theta} = \frac{F \cos\theta - mL \sin\theta \cos\theta \omega^2 - (M+m)g \sin\theta}{L(M + m\sin^2\theta)}
+\end{equation}
+
+Sada možemo zapisati cijelu dinamiku sustava u obliku $\dot{x}_{vec} = f(x_{vec}, u)$, koristeći $u=F$ i $x_{vec} = [p_x, \theta, v_x, \omega]^T$:
+$$
+\dot{x}_{vec} = f(x_{vec}, u) = 
+\begin{bmatrix} 
+\dot{p}_x \\ \dot{\theta} \\ \dot{v}_x \\ \dot{\omega} 
+\end{bmatrix} 
+= 
+\begin{bmatrix} 
+v_x \\ 
+\omega \\ 
+\frac{u - mL \sin\theta \omega^2 - mg \sin\theta \cos\theta}{M + m\sin^2\theta} \\ 
+\frac{u \cos\theta - mL \sin\theta \cos\theta \omega^2 - (M+m)g \sin\theta}{L(M + m\sin^2\theta)} 
+\end{bmatrix}
+$$
+gdje smo takoder iskoristili $1 - \cos^2\theta = \sin^2\theta$ u nazivniku.
+
 
 \end{document}
-
