@@ -109,33 +109,38 @@ classdef CartPendulumModel < handle
             x_next = x_current;
         end
 
-        function [A, B, C, D] = linearize(obj, xk, uk, Ts)
-            % Ac, Bc, Cc, Dc - linearize stateFcn
-            % sysc = ss(Ac, Bc, Cc, Dc);
-            % sysd = c2d(sysc, Ts);
-            % A = sysd.A; B = sysd.B; ...
+        function [Ac, Bc] = stateFcnJacobian(obj, x, u)
+            % Ac - jacobian of stateFcn with respect to x
+            % Bc - jacobian of stateFcn with respect to u
 
-            x1 = xk(1);
-            x2 = xk(2);
-            x3 = xk(3);
-            x4 = xk(4);
+            % x1 = x(1);
+            % x2 = x(2);
+            % x3 = x(3);
+            % x4 = x(4);
+            % 
+            % cos_x2 = cos(x2);
+            % 
+            % A21 = (0.0100*(80*x4^2*cos_x2 - 1962*cos_x2^2 + 981))/(cos(x2)^2 - 11) - (20*cos_x2*sin(x2)*(- 0.0800*sin(x2)*x4^2 + u + 0.9810*cos(x2)*sin(x2)))/(sin(x2)^2 + 10)^2;
+            % A24 = -(1.6000*x4*sin(x2))/(sin(x2)^2 + 10);
+            % 
+            % Ac = [0 0 1 0;0 0 0 1;
+            %     0,A21, 0, A24;
+            %     0, - (0.0125*(10791*cos(x2) - 160*x4^2*cos(x2)^2 - 1000*u*sin(x2) + 80*x4^2))/(cos(x2)^2 - 11) - (25*cos(x2)*sin(x2)*(- 0.0800*cos(x2)*sin(x2)*x4^2 + 10.7910*sin(x2) + u*cos(x2)))/(sin(x2)^2 + 10)^2, 0, (2*x4*sin(2*x2))/(cos(2*x2) - 21)]
+            % 
+            % Bc = ...
+        end
 
-            u = uk;
-
-            cos_x2 = cos(x2);
-
-            A21 = (0.0100*(80*x4^2*cos_x2 - 1962*cos_x2^2 + 981))/(cos(x2)^2 - 11) - (20*cos_x2*sin(x2)*(- 0.0800*sin(x2)*x4^2 + u + 0.9810*cos(x2)*sin(x2)))/(sin(x2)^2 + 10)^2;
-            A24 = -(1.6000*x4*sin(x2))/(sin(x2)^2 + 10);
-
-            Ac = [0 0 1 0;0 0 0 1;
-                0,A21, 0, A24;
-                0, - (0.0125*(10791*cos(x2) - 160*x4^2*cos(x2)^2 - 1000*u*sin(x2) + 80*x4^2))/(cos(x2)^2 - 11) - (25*cos(x2)*sin(x2)*(- 0.0800*cos(x2)*sin(x2)*x4^2 + 10.7910*sin(x2) + u*cos(x2)))/(sin(x2)^2 + 10)^2, 0, (2*x4*sin(2*x2))/(cos(2*x2) - 21)]
-        
-            Bc = ...
+        function [Cc, Dc] = outputFcnJacobian(obj, x, u)
+            % CC - jacobian of outputFcn with respect to x
+            % Dc - jacobian of outputFcn with respect to u
             Cc = eye(obj.nx);
-            Dc = zeros(obj.nx,obj.nu);
+            Dc = zeros(obj.nx, obj.nu);
+        end
 
-            ... % TODO!
+        function [A, B, C, D] = discreteJacobians(obj, xk, uk, Ts)
+            [Ac, Bc] = obj.stateFcnJacobian(xk,uk);
+            [Cc, Dc] = obj.outputFcnJacobian(xk,uk);
+            % TODO! disretize using c2d to obtain A, B, C, D
         end
     end
 
