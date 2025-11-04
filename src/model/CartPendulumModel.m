@@ -157,7 +157,12 @@ classdef CartPendulumModel < handle
         end
 
         function x_next = rk4_step(obj,xk,uk,h)
-            % TODO! runge-kutta 4th order
+            % Runge-Kutta 4th order integration
+            k1 = obj.stateFcn(xk, uk);
+            k2 = obj.stateFcn(xk + 0.5*h*k1, uk);
+            k3 = obj.stateFcn(xk + 0.5*h*k2, uk);
+            k4 = obj.stateFcn(xk + h*k3, uk);
+            x_next = xk + (h/6)*(k1 + 2*k2 + 2*k3 + k4);
         end
 
     end

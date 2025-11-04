@@ -44,18 +44,17 @@ classdef SimulationEnvironment < handle
             obj.results.U = [];
         
             % Glavna petlja
+            h = waitbar(0, 'Simulacija u tijeku...');
             while t < obj.T_end
                 % Izračun ulaza pomoću kontrolera
-
-                % u = obj.controller.izracunaj_silu(x);  
+                u = obj.controller.computeControlAction(x);
         
                 % Dodavanje poremećaja
-                d = obj.disturbance;
-                % u = u + d;
-                u = 0; % test
+                d = obj.disturbance(t);
+                u = u + d;
         
                 % Simulacija sustava preko modela
-                [x_next, ~] = obj.model.simulateStep(x, u, Tstep);
+                x_next = obj.model.simulateStep(x, u, Tstep);
         
                 % Ažuriranje vremena i stanja
                 t = t + Tstep;
@@ -65,7 +64,11 @@ classdef SimulationEnvironment < handle
                 obj.results.T = [obj.results.T; t];
                 obj.results.X = [obj.results.X; x'];
                 obj.results.U = [obj.results.U; u];
+
+                % Ažuriranje waitbara
+                waitbar(t / obj.T_end, h);
             end
+            close(h);
         end
 
         function animate(obj)
@@ -73,8 +76,8 @@ classdef SimulationEnvironment < handle
             T = obj.results.T;
         
             % Položaj kolica (x) i kut njihala (theta)
-            px = X(:, 1);       % Položaj kolica (x-os)
-            theta = X(:, 2);    % Kut njihala
+            px = X(:, 1);      % Položaj kolica (x-os)
+            theta = X(:, 2);   % Kut njihala
         
             % Parametri
             l = obj.model.params.l; % Duljina njihala
@@ -87,7 +90,7 @@ classdef SimulationEnvironment < handle
             axis equal;
             grid on;
             xlim([-2 2]);
-            ylim([-1.2 1.2]);
+            ylim([-1.2 1.2]); % Ostavljamo isti Y-limit, daje dobar pregled
             xlabel('Položaj kolica [m]');
             ylabel('Visina [m]');
             title('Simulacija njihala na kolicima');
@@ -95,15 +98,20 @@ classdef SimulationEnvironment < handle
             % Inicijalni crtež
             cart = rectangle('Position',[px(1)-cart_width/2, -cart_height/2, cart_width, cart_height], ...
                              'FaceColor',[0.1 0.4 0.8]);
+            
+            % --- ISPRAVAK OVDJE ---
             pendulum = line([px(1), px(1)+l*sin(theta(1))], ...
-                            [0, -l*cos(theta(1))], 'Color','r','LineWidth',2);
+                            [0, l*cos(theta(1))], 'Color','r','LineWidth',2);
         
             % Animacija
             for k = 1:10:length(T)
                 % Ažuriraj položaj
                 set(cart, 'Position', [px(k)-cart_width/2, -cart_height/2, cart_width, cart_height]);
                 set(pendulum, 'XData', [px(k), px(k)+l*sin(theta(k))]);
-                set(pendulum, 'YData', [0, -l*cos(theta(k))]);
+                
+                % --- ISPRAVAK OVDJE ---
+                set(pendulum, 'YData', [0, l*cos(theta(k))]);
+                
                 drawnow;
             end
         end
