@@ -6,16 +6,18 @@ classdef NMPCController
         R % Input cost matrix
         u_max % Input constraint
         Ts % Sample time
+        x_target % Target state
     end
 
     methods
-        function obj = NMPCController(model, N, Q, R, u_max, Ts)
+        function obj = NMPCController(model, N, Q, R, u_max, Ts, x_target)
             obj.model = model;
             obj.N = N;
             obj.Q = Q;
             obj.R = R;
             obj.u_max = u_max;
             obj.Ts = Ts;
+            obj.x_target = x_target;
         end
 
         function u_opt = computeControlAction(obj, x0)
@@ -55,8 +57,13 @@ classdef NMPCController
                 % Predict next state using the model
                 x_seq(:, k+1) = obj.model.simulateStep(x_seq(:, k), u_seq(k), obj.Ts);
                 
-                % Add to cost (regulator cost)
-                cost = cost + x_seq(:, k+1)' * obj.Q * x_seq(:, k+1) + u_seq(k)' * obj.R * u_seq(k);
+                % Calculate error from target state
+                error = x_seq(:, k+1) - obj.x_target;
+
+                error(2) = atan2(sin(error(2)), cos(error(2)));
+                
+                % Add to cost (tracking cost)
+                cost = cost + error' * obj.Q * error + u_seq(k)' * obj.R * u_seq(k);
             end
         end
     end
