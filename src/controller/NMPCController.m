@@ -6,11 +6,9 @@ classdef NMPCController
         R % Input cost matrix
         u_max % Input constraint
         Ts % Sample time
-        x_target % Target state
         integration_method % Integration method for simulation
         
-        % For warm start
-        u_seq_opt_prev
+        data
     end
 
     methods
@@ -28,7 +26,7 @@ classdef NMPCController
             obj.u_seq_opt_prev = zeros(N, 1);
         end
 
-        function [u_opt, cost] = computeControlAction(obj, x0)
+        function [u_opt, cost] = computeControlAction(obj, x0, x_target)
             % Use the previous solution as an initial guess (warm start)
             u_seq0 = obj.u_seq_opt_prev;
 

@@ -141,6 +141,17 @@ classdef CartPendulumModel < handle
             [Ac, Bc] = obj.stateFcnJacobian(xk,uk);
             [Cc, Dc] = obj.outputFcnJacobian(xk,uk);
             % TODO! disretize using c2d to obtain A, B, C, D
+            sys_c = ss(Ac,Bc,Cc,Dc);
+            sys_d = c2d(sys_c,Ts);
+            A = sys_d.A; B = sys_d.B; C = sys_d.C; D = sys_d.D;
+        end
+
+        % Dodati set i get metode za pojedine parametre
+
+        % Dodati gettere za handle of stateFcn, outputFcn,
+        % stateFcnJacobian, outputFcnJacobian
+        function h = getStateFcnHandle(obj)
+            h = @obj.stateFcn;
         end
     end
 
