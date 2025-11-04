@@ -5,23 +5,25 @@ classdef SimulationEnvironment < handle
         T_end           % ukupno vrijeme
         x0              % početno stanje
         disturbance     % poremećaji
+        integration_method % metoda integracije
 
         % Reference na druge klase
         model           % objekt System_Model
         controller      % objekt NMPC_Controller
 
         % Spremanje rezultata
-        results         % struktura s poljima T, X, U
+        results
     end
 
     methods
         % Konstruktor
-        function obj = SimulationEnvironment(model, controller, Ts, T_end, x0, disturbance)
+        function obj = SimulationEnvironment(model, controller, Ts, T_end, x0, disturbance, integration_method)
             obj.model = model;
             obj.controller = controller;
             obj.Ts = Ts;
             obj.T_end = T_end;
             obj.x0 = x0;
+            obj.integration_method = integration_method;
 
             if nargin < 6 || isempty(disturbance)
                 obj.disturbance = @(t) 0; % zadano bez poremećaja
@@ -29,51 +31,59 @@ classdef SimulationEnvironment < handle
                 obj.disturbance = disturbance;
             end
 
-            obj.results = struct('T', [], 'X', [], 'U', []);
+            % Inicijalizacija strukture za rezultate
+            obj.results = struct('X', [], 'U', [], 'Cost', []);
         end
 
         function run(obj)
             % Inicijalizacija
-            t = 0;
             x = obj.x0;
             Tstep = obj.Ts;
-        
-            % Spremanje početnih vrijednosti
-            obj.results.T = t;
-            obj.results.X = x';
-            obj.results.U = [];
-        
+            
+            % Priprema polja za spremanje rezultata
+            time_vec = (0:Tstep:obj.T_end)';
+            X_vec = zeros(length(time_vec), length(x));
+            U_vec = zeros(length(time_vec)-1, obj.model.nu);
+            Cost_vec = zeros(length(time_vec)-1, 1);
+            
+            X_vec(1, :) = x';
+
             % Glavna petlja
             h = waitbar(0, 'Simulacija u tijeku...');
-            while t < obj.T_end
+            for i = 1:length(time_vec)-1
                 % Izračun ulaza pomoću kontrolera
-                u = obj.controller.computeControlAction(x);
+                [u, cost] = obj.controller.computeControlAction(x);
         
                 % Dodavanje poremećaja
-                d = obj.disturbance(t);
+                d = obj.disturbance(time_vec(i));
                 u = u + d;
         
                 % Simulacija sustava preko modela
-                x_next = obj.model.simulateStep(x, u, Tstep);
+                x_next = obj.model.simulateStep(x, u, Tstep, obj.integration_method);
         
-                % Ažuriranje vremena i stanja
-                t = t + Tstep;
+                % Ažuriranje stanja
                 x = x_next;
         
                 % Spremi rezultate
-                obj.results.T = [obj.results.T; t];
-                obj.results.X = [obj.results.X; x'];
-                obj.results.U = [obj.results.U; u];
+                X_vec(i+1, :) = x';
+                U_vec(i, :) = u';
+                Cost_vec(i) = cost;
 
                 % Ažuriranje waitbara
-                waitbar(t / obj.T_end, h);
+                waitbar(time_vec(i+1) / obj.T_end, h);
             end
             close(h);
+            
+            % Spremanje rezultata kao timeseries objekte
+            obj.results.X = timeseries(X_vec, time_vec, 'Name', 'Stanja');
+            obj.results.U = timeseries(U_vec, time_vec(1:end-1), 'Name', 'Ulaz');
+            obj.results.Cost = timeseries(Cost_vec, time_vec(1:end-1), 'Name', 'Cijena');
         end
 
         function animate(obj)
-            X = obj.results.X;
-            T = obj.results.T;
+            % Ekstrakcija podataka iz timeseries objekata
+            X = obj.results.X.Data;
+            T = obj.results.X.Time;
         
             % Položaj kolica (x) i kut njihala (theta)
             px = X(:, 1);      % Položaj kolica (x-os)
@@ -99,7 +109,6 @@ classdef SimulationEnvironment < handle
             cart = rectangle('Position',[px(1)-cart_width/2, -cart_height/2, cart_width, cart_height], ...
                              'FaceColor',[0.1 0.4 0.8]);
             
-            % --- ISPRAVAK OVDJE ---
             pendulum = line([px(1), px(1)+l*sin(theta(1))], ...
                             [0, l*cos(theta(1))], 'Color','r','LineWidth',2);
         
@@ -108,10 +117,7 @@ classdef SimulationEnvironment < handle
                 % Ažuriraj položaj
                 set(cart, 'Position', [px(k)-cart_width/2, -cart_height/2, cart_width, cart_height]);
                 set(pendulum, 'XData', [px(k), px(k)+l*sin(theta(k))]);
-                
-                % --- ISPRAVAK OVDJE ---
                 set(pendulum, 'YData', [0, l*cos(theta(k))]);
-                
                 drawnow;
             end
         end
