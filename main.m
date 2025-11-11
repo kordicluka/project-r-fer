@@ -21,7 +21,7 @@ method_choice = input('Unesite broj metode: ');
 
 if method_choice == 2
     integration_method = 'euler';
-elif method_choice == 3
+elseif method_choice == 3
     integration_method = 'ode45';
 else
     integration_method = 'rk4';
@@ -40,7 +40,7 @@ if scenario == 1
     x0 = [0; 0.1; 0; 0];
     Q = diag([10, 10, 1, 1]);
     R = 0.1;
-elif scenario == 2
+elseif scenario == 2
     % SCENARIJ 2: Swing-up
     T_end = 15;
     x0 = [0; pi; 0; 0];
