@@ -15,3 +15,6 @@
 *.vrb
 # Matlab pomoćne datoteke
 *.asv
+
+# Claude Code dokumentacija
+CLAUDE.md
