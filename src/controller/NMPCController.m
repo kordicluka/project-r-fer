@@ -46,7 +46,6 @@ classdef NMPCController < handle
 
             % Initialize nlmpcmove options
             obj.nloptions = nlmpcmoveopt;
-            obj.nloptions.Parameters = {obj}; % Pass controller object as parameter
         end
 
         function createNLMPC(obj)
@@ -64,15 +63,16 @@ classdef NMPCController < handle
             obj.nlobj.ControlHorizon = obj.N;
 
             % Define the prediction model using discrete-time state function
-            obj.nlobj.Model.StateFcn = @obj.nlmpcStateFcn;
+            % Use anonymous function to properly wrap the method call
+            obj.nlobj.Model.StateFcn = @(x, u) obj.nlmpcStateFcn(x, u);
             obj.nlobj.Model.IsContinuousTime = false;
-            obj.nlobj.Model.NumberOfParameters = 1; % Controller object itself
+            obj.nlobj.Model.NumberOfParameters = 0; % No additional parameters needed
 
             % Define output function using model's outputFcn
-            obj.nlobj.Model.OutputFcn = @obj.nlmpcOutputFcn;
+            obj.nlobj.Model.OutputFcn = @(x, u) obj.nlmpcOutputFcn(x, u);
 
             % Provide analytical Jacobian for output function (improves speed)
-            obj.nlobj.Jacobian.OutputFcn = @obj.nlmpcOutputJacobian;
+            obj.nlobj.Jacobian.OutputFcn = @(x, u) obj.nlmpcOutputJacobian(x, u);
 
             % Configure cost function weights
             % Extract diagonal elements from Q matrix for output weights
@@ -88,10 +88,10 @@ classdef NMPCController < handle
             x0 = obj.x_target;
             u0 = 0;
             try
-                validateFcns(obj.nlobj, x0, u0, [], {obj});
+                validateFcns(obj.nlobj, x0, u0);
                 fprintf('NMPC functions validated successfully.\n');
             catch ME
-                warning('NMPC function validation failed: %s', ME.message);
+                warning(ME.identifier, 'NMPC function validation failed: %s', ME.message);
             end
         end
 
@@ -123,7 +123,7 @@ classdef NMPCController < handle
             end
         end
 
-        function x_next = nlmpcStateFcn(obj, x, u, controller_obj)
+        function x_next = nlmpcStateFcn(obj, x, u)
             %% Discrete-time state function for nlmpc
             %
             % This function is called by nlmpc to predict future states.
@@ -132,17 +132,15 @@ classdef NMPCController < handle
             % Inputs:
             %   x - current state [4x1]
             %   u - control input (scalar)
-            %   controller_obj - this controller object (passed as parameter)
             %
             % Outputs:
             %   x_next - next state [4x1]
 
             % Use the model's simulateStep for prediction
-            x_next = controller_obj.model.simulateStep(x, u, controller_obj.Ts, ...
-                                                       controller_obj.integration_method);
+            x_next = obj.model.simulateStep(x, u, obj.Ts, obj.integration_method);
         end
 
-        function y = nlmpcOutputFcn(obj, x, u, controller_obj)
+        function y = nlmpcOutputFcn(obj, x, u)
             %% Output function for nlmpc
             %
             % Maps states to outputs. For tracking, we output all states.
@@ -150,20 +148,19 @@ classdef NMPCController < handle
             % Inputs:
             %   x - current state [4x1]
             %   u - control input (scalar)
-            %   controller_obj - this controller object (passed as parameter)
             %
             % Outputs:
             %   y - output vector [4x1]
 
             % Use the model's outputFcn
-            y = controller_obj.model.outputFcn(x, u);
+            y = obj.model.outputFcn(x, u);
 
             % Apply angle wrapping for the pendulum angle (second state)
             % This ensures proper handling of the periodic nature of theta
             y(2) = atan2(sin(x(2)), cos(x(2)));
         end
 
-        function C = nlmpcOutputJacobian(obj, x, u, controller_obj)
+        function C = nlmpcOutputJacobian(obj, x, u)
             %% Analytical Jacobian of output function with respect to state
             %
             % Providing analytical Jacobian improves computational efficiency.
@@ -171,13 +168,12 @@ classdef NMPCController < handle
             % Inputs:
             %   x - current state [4x1]
             %   u - control input (scalar)
-            %   controller_obj - this controller object (passed as parameter)
             %
             % Outputs:
             %   C - Jacobian matrix [ny x nx]
 
             % Get Jacobian from model
-            [C, ~] = controller_obj.model.outputFcnJacobian(x, u);
+            [C, ~] = obj.model.outputFcnJacobian(x, u);
 
             % Modify second row for angle wrapping: d(atan2(sin(theta), cos(theta)))/dtheta
             % For small angles, this is approximately 1, but let's be precise:
