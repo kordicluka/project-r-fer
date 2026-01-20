@@ -1,0 +1,10 @@
+NMPC Test Results Summary
+=========================
+
+Test 1: Prediction Horizon (N)
+N	ISE	IAE	Settling[s]	SolveTime[ms]	Iterations
+10	326.3146	80.057	Inf	85.43	19.6
+20	0.2495	0.693	0.60	73.74	9.3
+30	0.2684	0.690	0.60	94.27	6.8
+50	0.2684	0.689	0.60	132.44	5.4
+

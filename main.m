@@ -22,17 +22,27 @@ function main(varargin)
 %   'u_max'       - Maksimalna sila [N] (default: 20)
 %   'Q'           - Težinska matrica stanja (4x4)
 %   'R'           - Težina upravljanja (scalar)
-%   'disturbance' - Funkcija poremećaja @(t)
+%   'disturbance_force'  - Poremećaj sile na kolica @(t) [N]
+%   'disturbance_torque' - Poremećaj momenta na njihalo @(t) [Nm]
+%   'param_change'       - Funkcija za promjenu parametara @(t, model)
 %   'x_target'    - Ciljna točka [px; theta; vx; omega] (default: [0;0;0;0])
+%   'use_continuous_model' - Ako true, nlmpc koristi kontinuirani model (default: false)
 %
 % Primjeri:
 %   main                                          % Interaktivni način
 %   main(1, 'rk4')                                % Stabilizacija s rk4
 %   main(2, 'euler', 'N', 20, 'Ts', 0.1)          % Swing-up s prilagođenim parametrima
 %   main(1, 'rk4', 'x0', [0; 0.2; 0; 0])          % Stabilizacija s prilagođenim početkom
-%   main(3, 'rk4', 'disturbance', @(t) 5*(t>3 & t<4))  % Prilagođeni poremećaj
+%   main(3, 'rk4', 'disturbance_force', @(t) 5*(t>3 & t<4))  % Poremećaj sile
+%   main(1, 'rk4', 'disturbance_torque', @(t) 0.5*(t>2 & t<2.5))  % Poremećaj momenta
+%   main(1, 'rk4', 'param_change', @(t,m) addMassAtTime(t,m,3))   % Promjena mase
 
-clear; clc; close all;
+% Očisti samo ako je interaktivni način (bez argumenata)
+if nargin == 0
+    clear; clc; close all;
+else
+    clc; close all;
+end
 
 % Dodaj staze do modela i kontrolera
 addpath(genpath('src/model'));
@@ -66,8 +76,20 @@ if nargin == 0
         integration_method = 'rk4';
     end
 
+    % Odabir tipa modela (diskretni vs kontinuirani)
+    fprintf('\nOdaberite tip modela:\n');
+    fprintf('  1: Diskretni (ručna %s integracija) - default\n', integration_method);
+    fprintf('  2: Kontinuirani (nlmpc interno diskretizira)\n');
+    model_choice = input('Unesite broj (1-2): ');
+
+    if model_choice == 2
+        use_continuous_model = true;
+    else
+        use_continuous_model = false;
+    end
+
     % Učitaj postavke za odabrani scenarij
-    [T_end, x0, Q, R, disturbance] = getScenarioDefaults(scenario);
+    [T_end, x0, Q, R, disturbance_force, disturbance_torque, param_change] = getScenarioDefaults(scenario);
 
     % Postavi ostale parametre na defaultne vrijednosti
     N = 30;
@@ -93,14 +115,17 @@ elseif nargin >= 2
     addParameter(p, 'u_max', 20);
     addParameter(p, 'Q', []);
     addParameter(p, 'R', []);
-    addParameter(p, 'disturbance', []);
+    addParameter(p, 'disturbance_force', []);
+    addParameter(p, 'disturbance_torque', []);
+    addParameter(p, 'param_change', []);
     addParameter(p, 'x_target', [0; 0; 0; 0]);
+    addParameter(p, 'use_continuous_model', false);
 
     parse(p, varargin{3:end});
     custom_params = p.Results;
 
     % Load scenario defaults
-    [T_end_default, x0_default, Q_default, R_default, disturbance_default] = getScenarioDefaults(scenario);
+    [T_end_default, x0_default, Q_default, R_default, dist_force_default, dist_torque_default, param_change_default] = getScenarioDefaults(scenario);
 
     % Apply custom parameters or defaults
     x0 = custom_params.x0;
@@ -115,13 +140,20 @@ elseif nargin >= 2
     R = custom_params.R;
     if isempty(R), R = R_default; end
 
-    disturbance = custom_params.disturbance;
-    if isempty(disturbance), disturbance = disturbance_default; end
+    disturbance_force = custom_params.disturbance_force;
+    if isempty(disturbance_force), disturbance_force = dist_force_default; end
+
+    disturbance_torque = custom_params.disturbance_torque;
+    if isempty(disturbance_torque), disturbance_torque = dist_torque_default; end
+
+    param_change = custom_params.param_change;
+    if isempty(param_change), param_change = param_change_default; end
 
     Ts = custom_params.Ts;
     N = custom_params.N;
     u_max = custom_params.u_max;
     x_target = custom_params.x_target;
+    use_continuous_model = custom_params.use_continuous_model;
 
     % Determine scenario name
     scenario_names = {'Stabilizacija', 'Swing-up', 'Odbacivanje poremećaja'};
@@ -142,6 +174,11 @@ end
 fprintf('\n=== Konfiguracija Simulacije ===\n');
 fprintf('Scenarij: %s\n', scenario_name);
 fprintf('Metoda integracije: %s\n', integration_method);
+if use_continuous_model
+    fprintf('Model: Kontinuirani (nlmpc diskretizira)\n');
+else
+    fprintf('Model: Diskretni (ručna %s integracija)\n', integration_method);
+end
 fprintf('Početno stanje x0: [%.3f, %.4f, %.3f, %.3f]\n', x0);
 fprintf('  (pozicija=%.3f m, kut=%.1f°, brzina=%.3f m/s, kutna_brzina=%.3f rad/s)\n', ...
         x0(1), rad2deg(x0(2)), x0(3), x0(4));
@@ -154,10 +191,13 @@ fprintf('=====================================\n\n');
 model = CartPendulumModel();
 
 %% Kreiraj NMPC kontroler
-controller = NMPCController(model, N, Q, R, u_max, Ts, x_target, integration_method);
+controller = NMPCController(model, N, Q, R, u_max, Ts, integration_method, use_continuous_model);
 
 %% Kreiraj simulacijsko okruženje
-sim = SimulationEnvironment(model, controller, Ts, T_end, x0, disturbance, integration_method);
+sim = SimulationEnvironment(model, controller, T_end, x0, x_target, ...
+    'disturbance_force', disturbance_force, ...
+    'disturbance_torque', disturbance_torque, ...
+    'param_change', param_change);
 
 %% Pokreni simulaciju
 fprintf('Pokretanje simulacije...\n');
@@ -205,27 +245,42 @@ sim.animate();
 end
 
 %% Helper function to get scenario defaults
-function [T_end, x0, Q, R, disturbance] = getScenarioDefaults(scenario)
+function [T_end, x0, Q, R, disturbance_force, disturbance_torque, param_change] = getScenarioDefaults(scenario)
+    % Defaultne funkcije za poremećaje
+    no_disturbance = @(t) 0;
+    no_param_change = @(t, model) [];
+
     if scenario == 1
         % SCENARIJ 1: Stabilizacija
+        % Njihalo počinje blizu uspravnog položaja (theta = 0.1 rad ≈ 5.7°)
         T_end = 10;
         x0 = [0; 0.1; 0; 0];
         Q = diag([10, 10, 1, 1]);
         R = 0.1;
-        disturbance = @(t) 0;
+        disturbance_force = no_disturbance;
+        disturbance_torque = no_disturbance;
+        param_change = no_param_change;
+
     elseif scenario == 2
         % SCENARIJ 2: Swing-up
+        % Njihalo počinje s dna (theta = pi)
         T_end = 15;
         x0 = [0; pi; 0; 0];
         Q = diag([1, 10, 0.1, 0.1]);
-        R = 0.01;
-        disturbance = @(t) 0;
+        R = 0.01;  % Manja težina za agresivnije upravljanje
+        disturbance_force = no_disturbance;
+        disturbance_torque = no_disturbance;
+        param_change = no_param_change;
+
     else
         % SCENARIJ 3: Odbacivanje poremećaja
+        % Njihalo počinje uspravno, poremećaj sile na kolica u t=5s
         T_end = 10;
         x0 = [0; 0; 0; 0];
         Q = diag([10, 10, 1, 1]);
         R = 0.1;
-        disturbance = @(t) 10 * (t > 5 & t < 5.2);
+        disturbance_force = @(t) 10 * (t > 5 & t < 5.2);  % 10N impuls
+        disturbance_torque = no_disturbance;
+        param_change = no_param_change;
     end
 end

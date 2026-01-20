@@ -1,0 +1,6 @@
+Konfiguracija	ISE	IAE	Settling[s]	CtrlEffort	Overshoot[%]
+----------------------------------------------------------------------
+Standardno	1.1597	1.4780	1.40	4.48	0.00
+Visoki R	0.8161	1.8157	2.15	3.10	0.00
+Agresivno	1.3841	1.4686	1.35	5.07	0.00
+Prioritet kut	7.5592	9.3597	0.20	3.48	0.00
